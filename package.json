@@ -1,0 +1,22 @@
+{
+  "name": "pi-quota-dashboard",
+  "version": "0.1.0",
+  "description": "Read-only provider quota, balance and session dashboard for the pi coding agent — Claude, OpenAI Codex and DeepSeek in one footer line",
+  "keywords": ["pi-package", "pi-extension", "pi", "quota", "usage", "statusline", "footer", "anthropic", "openai-codex", "deepseek"],
+  "license": "MIT",
+  "author": "mufeiyu-ayu",
+  "repository": { "type": "git", "url": "git+https://github.com/mufeiyu-ayu/pi-quota-dashboard.git" },
+  "bugs": { "url": "https://github.com/mufeiyu-ayu/pi-quota-dashboard/issues" },
+  "homepage": "https://github.com/mufeiyu-ayu/pi-quota-dashboard#readme",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "pi": { "extensions": ["./index.ts"] },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-ai": "*"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}
