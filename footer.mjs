@@ -1,5 +1,5 @@
 import { visibleWidth, truncateToWidth } from '@earendil-works/pi-tui';
-import { sessionUsage } from './core.mjs';
+import { sessionUsage, STATUS_KEY } from './core.mjs';
 import { isSubscription } from './auth.mjs';
 
 // 口径对齐 pi core 的 footer（dist/modes/interactive/components/footer.js）。
@@ -14,6 +14,7 @@ export const formatTokens = (count) =>
   : `${Math.round(count / 1_000_000)}M`;
 
 const sanitize = (text) => text.replace(/[\r\n\t]/g, ' ').replace(/ +/g, ' ').trim();
+const MODEL_ICON = '🤖';
 const BAR_WIDTH = 10;
 const BAR_FILLED = '█';
 const BAR_EMPTY = '░';
@@ -66,23 +67,20 @@ export class MergedFooter {
     const costText = cost || subscription || usage.cost.state === 'unknown'
       ? `$${cost === null ? '?' : cost.toFixed(3)}${subscription ? ' (sub)' : ''}` : null;
 
-    // 扩展状态并进统计行，这是接管 footer 的唯一理由。排序与 pi 一致。
-    const statuses = [...this.footerData.getExtensionStatuses()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, text]) => sanitize(text))
-      .filter(Boolean);
+    // 只取本扩展自己的状态。pi 原本把所有扩展的 setStatus 内容排在第三行，
+    // 这一行取代了它，因此其他扩展的状态不会出现在这里 —— 是有意的取舍，
+    // 代价是同时装了别的状态类扩展时，它们没有显示位置。
+    const quota = sanitize(this.footerData.getExtensionStatuses().get(STATUS_KEY) ?? '');
     // 放不下就逐级降级：先丢上下文的绝对计数（进度条和百分比已经说明了同一件事），
-    // 再丢分支。额度和其他扩展状态是这一行的主角，任何一级都不丢。
-    // 段落靠 │ 分隔，不加图标。额度段自带的红绿灯是状态指示，不是装饰，保留。
+    // 再丢分支。额度是这一行的主角，任何一级都不丢。
+    // 段落靠 │ 分隔，只有模型段带图标。
     const separator = this.theme.fg('borderMuted', ' │ ');
     const compose = (level) => {
-      const groups = [this.modelSegment(ctx)];
+      const groups = [`${MODEL_ICON} ${this.modelSegment(ctx)}`];
       if (level < 2 && branch) groups.push(dim(branch));
       groups.push(this.contextSegment(ctx, level < 1));
-      // 费用用常规前景色：黄色留给有语义的信号（额度告急、上下文接近上限），
-      // 一个纯装饰的黄会和它们撞色。
-      if (costText) groups.push(this.theme.fg('text', costText));
-      if (statuses.length) groups.push(statuses.join(separator));
+      if (costText) groups.push(this.theme.fg('warning', costText));
+      if (quota) groups.push(quota);
       return groups.join(separator);
     };
 

@@ -11,8 +11,8 @@ Every other pi extension covers either subscription windows (Anthropic OAuth, Co
 That shot is on DeepSeek, whose balance is comfortably funded — so the quota segment withdraws itself instead of leaving a gap. On a subscription provider the same line ends with:
 
 ```
-🟡 7d 25% ↻4d11h                            Codex Pro — one 7-day window is all the account has
-🟢 5h 98% ↻3h12m 🟡 7d 49% 🔴 Fable 13%     Claude — one light per window
+7d 25% (4d11h)                        Codex Pro — one 7-day window is all the account has
+5h 98% (3h12m) · 7d 49% · Fable 13%   Claude — one entry per window
 ```
 
 Verified against **pi 0.85.1 / Node 22.20.0**.
@@ -45,8 +45,8 @@ pi install ./pi-quota-dashboard
 pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, segments separated by `│`:
 
 ```
-high · gpt-6-astra │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ 🟡 7d 25% ↻4d11h
-└──── model ─────┘   └branch┘  └──────── context ─────────┘  └─ cost ─┘  └──── quota ────┘
+🤖 high · gpt-6-astra │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ 7d 25% (4d11h)
+  └─── model ────┘   └branch┘  └──────── context ─────────┘  └─ cost ─┘  └── quota ──┘
 ```
 
 Everything is left-aligned — nothing is pushed to the far right where it gets truncated first.
@@ -64,13 +64,13 @@ A 10-cell progress bar, the percentage, and the absolute count. Bar and number s
 
 | Element | Meaning |
 |---|---|
-| 🟢 🟡 🔴 | One light per window; the light doubles as the separator. Graded on **remaining**: >50% green, >20% amber, else red |
-| ⚪ | Data is stale (not refreshed this cycle). Percentages lose their colour — a traffic light only means something on freshly fetched data |
+| `25%` colour | Graded on **remaining**: >50% green, >20% amber, else red. Windows are separated by `·` |
+| `~` | Data is stale (not refreshed this cycle). Percentages also lose their colour — a colour scale only means something on freshly fetched data |
 | `5h` `7d` `1d` | Window length, derived from `durationSeconds`. Model-scoped weekly windows get the model name (`7d Opus`), `weekly_scoped` uses the service's own display name (`Fable`), Codex code-review buckets are prefixed `CR` |
 | `25%` | **Remaining**, not consumed |
-| `↻4d11h` | Reset countdown, shown only for the shortest window — it resets first and is the one you hit |
-| 🔴 `¥0.00` | API balance, shown **only when it runs dry** (the service reports `is_available:false`, or the amount truncates to zero/negative). A balance does not run out mid-session the way a quota does, so it stays out of the way. Full figures via `/dashboard` |
-| ⏳ / ⚠️ | Querying / could not fetch (`?`, `n/a`, `auth`, `expired`, `403`, `429`, `error`). A healthy `ok` prints no status word at all |
+| `(4d11h)` | Reset countdown, shown only for the shortest window — it resets first and is the one you hit |
+| `¥0.00` (red) | API balance, shown **only when it runs dry** (the service reports `is_available:false`, or the amount truncates to zero/negative). A balance does not run out mid-session the way a quota does, so it stays out of the way. Full figures via `/dashboard` |
+| `…` / status word | Querying / could not fetch (`?`, `n/a`, `auth`, `expired`, `403`, `429`, `error`). Definite problems are red, merely-missing data stays dim. A healthy `ok` prints no status word at all |
 
 Windows with no data are **omitted entirely** rather than occupying a `?%` slot. If the active provider has no quota concept, the whole segment is withdrawn instead of leaving a gap.
 
@@ -80,12 +80,14 @@ A narrow terminal must not push the quota — the whole point of the extension �
 
 | Width | Shows |
 |---|---|
-| Wide | `high · model │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ status` |
+| Wide | `🤖 high · model │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ quota` |
 | Narrower | absolute token count dropped — the bar and the percentage already say it |
 | Narrower still | branch dropped |
 | Narrowest | the line is truncated from the right. Model, quota and other extension statuses are never dropped as segments |
 
 `setStatus()` is still published normally, so if another extension takes over the footer this one keeps showing up there. `session_shutdown` hands the built-in footer back.
+
+**Only this extension's own status is rendered.** pi normally lines up every extension's `setStatus()` output on a third row; this line replaces that row, so other status-publishing extensions have nowhere to show. A deliberate trade-off for a clean single line — if you rely on another statusline-style extension, this one will hide it.
 
 ### Differences from the built-in footer
 

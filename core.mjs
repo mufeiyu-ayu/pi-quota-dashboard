@@ -1,4 +1,6 @@
 export const TTL_MS = 60_000;
+// Core sorts status keys; keep common existing indicators first.
+export const STATUS_KEY = 'zz-pi-quota-dashboard';
 export const ENDPOINTS = Object.freeze({
   anthropic: 'https://api.anthropic.com/api/oauth/usage',
   'openai-codex': 'https://chatgpt.com/backend-api/wham/usage',
@@ -127,7 +129,6 @@ export function snapshot(ctx, quota) {
 const RESET = '\x1b[0m';
 const DIM = '\x1b[2m';
 const HEAT = ['\x1b[32m', '\x1b[33m', '\x1b[31m'];
-const LIGHT = ['🟢', '🟡', '🔴'];
 const paint = (code, text) => `${code}${text}${RESET}`;
 const dim = (text) => paint(DIM, text);
 // 分档看的是剩余量：还剩一半以上宽裕，两成以下告急。
@@ -137,6 +138,8 @@ const STATE_LABEL = {
   unknown: '?', unavailable: 'n/a', unauthenticated: 'auth',
   expired: 'expired', forbidden: '403', rate_limited: '429', error: 'error',
 };
+// 确定出了问题的状态标红；只是取不到数的保持 dim，不虚张声势。
+const PROBLEM = new Set(['unauthenticated', 'expired', 'forbidden', 'rate_limited', 'error']);
 const shortDuration = (seconds) => seconds === null ? null
   : seconds % 86400 === 0 ? `${seconds / 86400}d`
   : seconds % 3600 === 0 ? `${seconds / 3600}h`
@@ -171,10 +174,9 @@ export function statusText(s, now = Date.now()) {
   // 模型、思考级别、上下文、会话 tokens 和费用由 pi 自带 footer 显示，这里只补它没有的额度。
   // 底栏不写插件名、凭据来源、账户核验提示和厂商；这些字段完整保留在 /dashboard 的快照里。
   if (q.state === 'unsupported') return '';
-  if (q.state === 'loading') return '⏳';
-  // ⚪ 表示数据过期未刷新；红绿灯只在数据当次刷新过时才代表真实水位。
+  if (q.state === 'loading') return dim('…');
+  // 数据过期未刷新时百分比不着色并缀 ~：色阶只在当次刷新过的数据上才代表真实水位。
   const stale = q.state === 'stale';
-  const light = (rank) => stale ? '⚪' : LIGHT[rank];
   const parts = [];
   // 服务直接说余额不足时以它为准，不靠数字自行判断。
   const insufficient = q.isAvailable === false;
@@ -186,7 +188,7 @@ export function statusText(s, now = Date.now()) {
     if (!insufficient && !/^-|^0+(?:\.0*)?$/.test(short)) continue;
     const symbol = b.currency === null ? '' : CURRENCY[b.currency] ?? '';
     const suffix = symbol === '' && b.currency !== null ? ` ${b.currency}` : '';
-    parts.push(`${stale ? '⚪' : '🔴'} ${paint(HEAT[2], `${symbol}${short}${suffix}`)}`);
+    parts.push(paint(stale ? DIM : HEAT[2], `${symbol}${short}${suffix}`));
   } else {
     // 显示的是剩余额度，不是已用：关心的是还能用多少。
     const shown = q.windows.filter((w) => w.remainingPercent !== null);
@@ -195,12 +197,12 @@ export function statusText(s, now = Date.now()) {
     for (const w of shown) {
       const rank = level(w.remainingPercent);
       const left = w.durationSeconds === shortest ? countdown(w.resetAt, now) : null;
-      parts.push(`${light(rank)} ${dim(windowLabel(w))} ${paint(stale ? DIM : HEAT[rank], `${Math.round(w.remainingPercent)}%`)}${left ? dim(` ↻${left}`) : ''}`);
+      parts.push(`${dim(windowLabel(w))} ${paint(stale ? DIM : HEAT[rank], `${Math.round(w.remainingPercent)}%`)}${left ? dim(` (${left})`) : ''}`);
     }
   }
-  // 每个窗口自带一盏灯，灯本身就是分隔符，不再另加符号。
-  if (parts.length) return parts.join(' ');
+  // 窗口之间用 · 分隔，与 footer 段落间的 │ 区分层级。
+  if (parts.length) return parts.join(dim(' · ')) + (stale ? dim(' ~') : '');
   // 查到了数据但没有需要提示的（余额充足、窗口全无数据）：不占位，也不报警。
   if (q.state === 'ok' || q.state === 'stale') return '';
-  return `⚠️ ${dim(STATE_LABEL[q.state] ?? q.state)}`;
+  return paint(PROBLEM.has(q.state) ? HEAT[2] : DIM, STATE_LABEL[q.state] ?? q.state);
 }

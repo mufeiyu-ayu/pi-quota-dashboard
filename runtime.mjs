@@ -1,9 +1,8 @@
-import { TTL_MS, snapshot, statusText, unavailable } from './core.mjs';
+import { TTL_MS, STATUS_KEY, snapshot, statusText, unavailable } from './core.mjs';
 import { resolveCredential } from './auth.mjs';
 import { QuotaCache } from './quota.mjs';
 
-// Core sorts status keys; keep common existing indicators (e.g. ponytail) first.
-export const STATUS_KEY = 'zz-pi-quota-dashboard';
+export { STATUS_KEY };
 const modelIdentity = (ctx) => {
   const model = ctx.model;
   return JSON.stringify([model?.provider, model?.id, model?.baseUrl]);

@@ -112,18 +112,18 @@ test('底栏仅隐藏编号2至5，其余信息及详情保留', () => {
   const text = statusText(s, NOW);
   assert.doesNotMatch(text, /dashboard|credentialSource|activeAccountVerified|未核验|存储账户|openai-codex/);
   // 显示剩余而非已用：used 74% 就是还剩 26%。
-  assert.equal(plain(text), '🟡 7d 26%');
-  assert.equal(plain(statusText({ ...s, quota: { ...s.quota, state: 'stale' } }, NOW)), '⚪ 7d 26%');
+  assert.equal(plain(text), '7d 26%');
+  assert.equal(plain(statusText({ ...s, quota: { ...s.quota, state: 'stale' } }, NOW)), '7d 26% ~');
   for (const [state, label] of [['expired', 'expired'], ['error', 'error'], ['rate_limited', '429'], ['unknown', '?']])
-    assert.equal(plain(statusText({ ...s, quota: { ...s.quota, state, windows: [] } }, NOW)), `⚠️ ${label}`);
-  assert.equal(statusText({ ...s, quota: { ...s.quota, state: 'loading', windows: [] } }, NOW), '⏳');
+    assert.equal(plain(statusText({ ...s, quota: { ...s.quota, state, windows: [] } }, NOW)), `${label}`);
+  assert.equal(statusText({ ...s, quota: { ...s.quota, state: 'loading', windows: [] } }, NOW), '\x1b[2m…\x1b[0m');
   // 当前 provider 查不到额度就整条撤掉，不在底栏占位。
   assert.equal(statusText({ ...s, quota: { ...s.quota, state: 'unsupported' } }, NOW), '');
   const ds = plain(statusText(snapshot(h.ctx, parseQuota('deepseek', balance)), NOW));
   // 服务报余额不足时把两笔都亮出来；充足时整条不占位。
-  assert.equal(ds, '🔴 ¥0.00+ 🔴 $12345678901234567890.12+');
+  assert.equal(ds, '¥0.00+ · $12345678901234567890.12+');
   assert.equal(statusText(snapshot(h.ctx, parseQuota('deepseek', { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '31.03' }] })), NOW), '');
-  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('deepseek', { is_available: false, balance_infos: [{ currency: 'CNY', total_balance: '0.00' }] })), NOW)), '🔴 ¥0.00');
+  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('deepseek', { is_available: false, balance_infos: [{ currency: 'CNY', total_balance: '0.00' }] })), NOW)), '¥0.00');
   assert.equal(s.quota.activeAccountVerified, false);
   assert.equal(s.quota.credentialSource, 'pi_stored_oauth');
   assert.equal(s.model.provider, 'openai-codex');
@@ -131,24 +131,24 @@ test('底栏仅隐藏编号2至5，其余信息及详情保留', () => {
 test('底栏：窗口简写、缺数据窗口不占位、仅最短窗口带重置倒计时', () => {
   const h = harness();
   // seven_day_sonnet 无数据，不该在底栏占一个 "?%" 的位置。
-  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('anthropic', claude)), NOW)), '🟢 5h 100% ↻5h0m 🔴 7d 20% 🟢 Fable 90%');
-  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('openai-codex', codex)), NOW)), '🟢 5h 75% ↻1m 🟢 7d 100%');
+  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('anthropic', claude)), NOW)), '5h 100% (5h0m) · 7d 20% · Fable 90%');
+  assert.equal(plain(statusText(snapshot(h.ctx, parseQuota('openai-codex', codex)), NOW)), '5h 75% (1m) · 7d 100%');
   const scoped = parseQuota('anthropic', { five_hour: null, seven_day: null, seven_day_opus: { utilization: 12.4 } });
-  assert.equal(plain(statusText(snapshot(h.ctx, scoped), NOW)), '🟢 7d Opus 88%');
+  assert.equal(plain(statusText(snapshot(h.ctx, scoped), NOW)), '7d Opus 88%');
   const review = parseQuota('openai-codex', { rate_limit: {}, code_review_rate_limit: { secondary_window: { used_percent: 3, limit_window_seconds: 86400 } } });
-  assert.equal(plain(statusText(snapshot(h.ctx, review), NOW)), '🟢 CR 1d 97%');
-  // 灯与色阶按剩余量的 50/20 分档，且 SGR 序列不影响 pi-tui 计算的可见宽度。
+  assert.equal(plain(statusText(snapshot(h.ctx, review), NOW)), 'CR 1d 97%');
+  // 色阶按剩余量的 50/20 分档，且 SGR 序列不影响 pi-tui 计算的可见宽度。
   const colored = statusText(snapshot(h.ctx, parseQuota('anthropic', claude)), NOW);
   assert.match(colored, /\x1b\[32m100%/);
   assert.match(colored, /\x1b\[31m20%/);
-  assert.match(statusText(snapshot(h.ctx, parseQuota('anthropic', { five_hour: { utilization: 50 } })), NOW), /🟡.*\x1b\[33m50%/);
+  assert.match(statusText(snapshot(h.ctx, parseQuota('anthropic', { five_hour: { utilization: 50 } })), NOW), /\x1b\[33m50%/);
 });
 test('Codex Pro 只有一个 7d 窗口：账户没有的窗口不凭空造成 unavailable', () => {
   // 实测 Pro 账户返回的原始形状：只有 rate_limit.primary_window，且它是 7d 不是 5h。
   const pro = parseQuota('openai-codex', { rate_limit: { primary_window: { used_percent: 75, reset_at: NOW / 1000 + 385_000, limit_window_seconds: 604800 } } }, NOW);
   assert.equal(pro.windows.length, 1);
   assert.equal(pro.windows[0].durationSeconds, 604800);
-  assert.equal(plain(statusText(snapshot(harness('openai-codex').ctx, pro), NOW)), '🟡 7d 25% ↻4d10h');
+  assert.equal(plain(statusText(snapshot(harness('openai-codex').ctx, pro), NOW)), '7d 25% (4d10h)');
   assert.equal(parseQuota('openai-codex', { rate_limit: {} }, NOW).windows.length, 0);
   assert.equal(parseQuota('openai-codex', { rate_limit: null }, NOW).state, 'unknown');
 });

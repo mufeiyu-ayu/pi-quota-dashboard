@@ -65,7 +65,7 @@ test('pi core footer: narrow terminal widths do not overflow or overwrite other 
   }
   assert.equal(statuses.get('ponytail'), 'unchanged');
   assert.match(footer.render(20)[2], /unchanged/);
-  assert.match(footer.render(160)[2], /🟢.*5h.*100%/);
+  assert.match(footer.render(160)[2], /5h.*100%/);
   footer.dispose();
 });
 
@@ -99,6 +99,8 @@ test('merged footer: 扩展状态与统计并进同一行、不溢出、随会�
     for (const handler of extension.handlers.get('session_start')) await handler({ type: 'session_start', reason: 'startup' }, ctx);
     await new Promise((r) => setImmediate(r));
     assert.equal(typeof factory, 'function', 'session_start 应接管 footer');
+    // 模拟额度已取到；ponytail 代表另一个扩展，它的状态不该并进来。
+    statuses.set('zz-pi-quota-dashboard', '🟡 7d 25%');
     const footer = factory(null, theme, { getGitBranch: () => 'main', getExtensionStatuses: () => statuses, getAvailableProviderCount: () => 3 });
 
     const lines = footer.render(160);
@@ -106,20 +108,21 @@ test('merged footer: 扩展状态与统计并进同一行、不溢出、随会�
     const plain = (line) => line.replace(/\x1b\[[0-9;]*m/g, '');
     // 上下文、费用与扩展状态同行，模型仍右对齐。
     // 模型、分支、上下文、费用、扩展状态全在这一行，靠 │ 分隔。
-    assert.match(plain(lines[0]), /^high · FAKE_模型 │ main │ █████░░░░░ 50\.0% 500\/1\.0k │ \$0\.013 │ FULL$/);
-    // 不显示厂商，模型段也不再右对齐。
+    assert.match(plain(lines[0]), /^🤖 high · FAKE_模型 │ main │ █████░░░░░ 50\.0% 500\/1\.0k │ \$0\.013 │ 🟡 7d 25%$/);
+    // 不显示厂商；模型段不再右对齐；其他扩展（ponytail）的状态不并入。
     assert.doesNotMatch(plain(lines[0]), /FAKE_UNKNOWN/);
+    assert.doesNotMatch(plain(lines[0]), /FULL/);
     // 会话尚无统计时行首不留空格。
     ctx.sessionManager.getEntries = () => [];
-    assert.match(plain(footer.render(160)[0]), /│ █████░░░░░ 50\.0% 500\/1\.0k │ FULL/);
+    assert.match(plain(footer.render(160)[0]), /│ █████░░░░░ 50\.0% 500\/1\.0k │ 🟡 7d 25%$/);
     ctx.sessionManager.getEntries = () => [message({ input: 1200, output: 34, cacheRead: 900, cacheWrite: 100, totalTokens: 2234, cost: { total: 0.0125 } })];
     // 宽度不够时先丢上下文的绝对计数；额度与其他扩展状态任何一级都不丢。
     const at = (w) => plain(footer.render(w)[0]);
-    assert.match(at(200), /│ main │ █████░░░░░ 50\.0% 500\/1\.0k │ /);
-    assert.doesNotMatch(at(60), /500\/1\.0k/);
-    assert.match(at(60), /│ main │ █████░░░░░ 50\.0% │ /);
-    assert.doesNotMatch(at(55), /main/);
-    assert.match(at(55), /^high · FAKE_模型 │ █████░░░░░ 50\.0% │ \$0\.013 │ FULL/);
+    assert.match(at(200), /🤖 .* │ main │ █████░░░░░ 50\.0% 500\/1\.0k │ /);
+    assert.doesNotMatch(at(70), /500\/1\.0k/);
+    assert.match(at(70), /│ main │ █████░░░░░ 50\.0% │ /);
+    assert.doesNotMatch(at(62), /main/);
+    assert.match(at(62), /^🤖 high · FAKE_模型 │ █████░░░░░ 50\.0% │ \$0\.013 │ 🟡 7d 25%/);
     for (const width of [0, 1, 2, 3, 8, 20, 40, 80, 160])
       for (const line of footer.render(width)) assert.ok(visibleWidth(line) <= width, `width ${width}`);
     // 有响应但 cost=0 时不拿 0 冒充已知零花费。
