@@ -54,7 +54,6 @@ Everything is left-aligned — nothing is pushed to the far right where it gets 
 - **Thinking level comes before the model name**, coloured with pi's own thinking scale (grey → blue → violet → magenta), so the strength reads at a glance.
 - **The provider is not shown.** `gpt-6-astra`, `deepseek-v4-flash` and `claude-fable-5-1` already say which vendor they are; the prefix cost 16 columns for nothing.
 - **Only the git branch, no working directory.** The branch is the part that changes and is worth watching; you already know which project you are in. Outside a repository the segment disappears entirely.
-- **Cost uses the regular foreground colour.** Yellow is reserved for signals that mean something (quota running low, context near the limit); a decorative yellow would collide with them.
 
 ### Context
 
@@ -159,7 +158,11 @@ Any other provider reports `unsupported` and the segment is withdrawn.
 
 ## Development
 
+The npm package ships only the runtime files, so clone the repository to run the tests:
+
 ```sh
+git clone https://github.com/mufeiyu-ayu/pi-quota-dashboard.git
+cd pi-quota-dashboard
 node --test test/*.test.mjs
 
 # prints usage only, no network

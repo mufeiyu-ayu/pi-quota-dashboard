@@ -9,6 +9,7 @@
   "bugs": { "url": "https://github.com/mufeiyu-ayu/pi-quota-dashboard/issues" },
   "homepage": "https://github.com/mufeiyu-ayu/pi-quota-dashboard#readme",
   "type": "module",
+  "files": ["index.ts", "*.mjs", "docs", "THIRD_PARTY_NOTICES.md"],
   "engines": { "node": ">=22.19.0" },
   "pi": { "extensions": ["./index.ts"] },
   "peerDependencies": {

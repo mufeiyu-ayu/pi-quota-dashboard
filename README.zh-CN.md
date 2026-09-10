@@ -54,7 +54,6 @@ pi 内置 footer 占三行：工作目录、统计、扩展状态。本扩展用
 - **思考强度排在模型名前面**，用 pi 自己的 thinking 分级色（灰 → 蓝 → 紫 → 品红），强度一眼可辨。
 - **不显示厂商。** `gpt-6-astra`、`deepseek-v4-flash`、`claude-fable-5-1` 本身就说明是哪一家，这个前缀白占 16 列。
 - **只显示 git 分支，不显示工作目录。** 分支才是会变、值得盯的那部分；自己在哪个项目你本来就知道。不在 git 仓库里时整段消失。
-- **费用用常规前景色。** 黄色留给有语义的信号（额度告急、上下文接近上限），一个纯装饰的黄会和它们撞色。
 
 ### 上下文
 
@@ -159,7 +158,11 @@ Claude 和 Codex 用的是官方服务的内部/非稳定额度接口，不承�
 
 ## 开发
 
+npm 包只带运行时文件，跑测试请先 clone 仓库：
+
 ```sh
+git clone https://github.com/mufeiyu-ayu/pi-quota-dashboard.git
+cd pi-quota-dashboard
 node --test test/*.test.mjs
 
 # 只打印用法，不联网
