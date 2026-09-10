@@ -28,6 +28,12 @@ Verified against **pi 0.85.1 / Node 22.20.0**.
 ## Install
 
 ```sh
+pi install npm:pi-quota-dashboard
+```
+
+Or straight from the repository:
+
+```sh
 pi install git:github.com/mufeiyu-ayu/pi-quota-dashboard
 ```
 

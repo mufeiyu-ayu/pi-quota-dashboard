@@ -28,6 +28,12 @@
 ## 安装
 
 ```sh
+pi install npm:pi-quota-dashboard
+```
+
+或者直接从仓库装：
+
+```sh
 pi install git:github.com/mufeiyu-ayu/pi-quota-dashboard
 ```
 
