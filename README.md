@@ -20,7 +20,7 @@ Verified against **pi 0.85.1 / Node 22.20.0**.
 ## What it does
 
 - **Shows remaining quota, not consumed** — you care about what is left.
-- **One line, not three.** pi's built-in footer is three rows (cwd / stats / extension statuses). This merges the last two.
+- **One line, not three.** pi's built-in footer takes three rows (cwd / stats / extension statuses). This collapses all of them into one.
 - **Only the windows your account actually has.** A Codex Pro account returns exactly one 7-day window — no 5h, no code-review bucket. Those are not invented as "unavailable" rows.
 - **Never writes credentials.** No auto-login, no token refresh, no writes to `auth.json`. An expired credential is reported as `expired` and left alone.
 - **Never claims more than it knows.** `activeAccountVerified` is permanently `false` — see [Honest by construction](#honest-by-construction).
@@ -42,12 +42,14 @@ pi install ./pi-quota-dashboard
 
 ## The footer line
 
-pi's built-in footer is three rows. This extension uses `ui.setFooter()` to merge the stats row and the extension-status row, separated by `│`:
+pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, each segment carrying its own icon and separated by `│`:
 
 ```
-█░░░░░░░░░ 10.4% 104k/1.0M │ $0.426 │ 🟡 7d 25% ↻4d11h
-└──── context ────────────┘  └cost┘   └─── quota ───┘
+📁 pi-dashboard (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h    model • high
+└──── directory ─────┘   └──────── context ─────────┘   └─ cost ─┘   └───── quota ────┘    └ right-aligned ┘
 ```
+
+Only the current directory name is shown, not the full path — a deep tree can eat 40 columns on its own.
 
 ### Context
 
@@ -73,10 +75,10 @@ A narrow terminal must not push the quota — the whole point of the extension �
 
 | Width | Shows |
 |---|---|
-| Wide | `↑31k ↓518 R91k W2.0k CH73.4% │ █░░░░░░░░░ 10.4% 104k/1.0M │ $0.426 │ status` |
-| Medium | token breakdown dropped |
-| Narrow | absolute count dropped too — the bar and the percentage already say it |
-| Narrower | only the right-hand model name is truncated. Quota and other extension statuses are never dropped |
+| Wide | `📁 dir (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
+| Narrower | absolute token count dropped — the bar and the percentage already say it |
+| Narrower still | directory dropped |
+| Narrowest | only the right-hand model name is truncated. Quota and other extension statuses are never dropped |
 
 `setStatus()` is still published normally, so if another extension takes over the footer this one keeps showing up there. `session_shutdown` hands the built-in footer back.
 
@@ -88,9 +90,10 @@ These are extension-API boundaries, not preferences:
 |---|---|
 | `(auto)` | **Not shown.** `autoCompactionEnabled` lives on pi's internal session object and is unreachable from `ExtensionContext`. Better absent than possibly stale |
 | `(sub)` | Mirrors pi's `isUsingSubscription`, but the `snapshot.auth` map behind `isUsingOAuth` is unreachable, so it uses `readStoredCredential(id)?.type === 'oauth' && provider.auth.oauth.isSubscription`. OAuth from environment/runtime is missed — under-reporting beats guessing |
+| `↑↓RW` `CH` | **Not shown.** The per-direction token breakdown and cache-hit rate are covered by the cost and context segments; cumulative token counts remain in `/dashboard`. |
 | `$?` | pi prints the running total; this keeps the conservative reading — if a **billable** response reports a cost of 0, the figure is untrustworthy, so it says so. An all-zero empty response (an abort, a model switch) is self-consistent and does not poison the session |
 
-Everything else — token counts, cache-hit rate, context thresholds, right-aligned model, provider prefix, truncation rules — matches the built-in footer.
+Everything else — context thresholds, right-aligned model, provider prefix, truncation rules — matches the built-in footer.
 
 ## Commands
 

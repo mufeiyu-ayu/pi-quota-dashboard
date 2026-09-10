@@ -4,8 +4,9 @@ import { sessionUsage } from './core.mjs';
 import { isSubscription } from './auth.mjs';
 
 // 口径对齐 pi core 的 footer（dist/modes/interactive/components/footer.js）。
-// 接管 footer 只为把扩展状态并进统计行；其余显示尽量与内置一致，pi 升级时由
-// 集成测试的版本断言提示复核。拿不到 autoCompactionEnabled，因此不显示 (auto)。
+// 接管 footer 只为把扩展状态并进统计行；保留的显示尽量与内置一致，pi 升级时由
+// 集成测试的版本断言提示复核。两处有意不同：拿不到 autoCompactionEnabled，
+// 不显示 (auto)；token 明细（↑↓RW/CH）已由费用和上下文段覆盖，不再复刻。
 export const formatTokens = (count) =>
   count < 1000 ? `${count}`
   : count < 10_000 ? `${(count / 1000).toFixed(1)}k`
@@ -13,24 +14,23 @@ export const formatTokens = (count) =>
   : count < 10_000_000 ? `${(count / 1_000_000).toFixed(1)}M`
   : `${Math.round(count / 1_000_000)}M`;
 
+// 全部并进一行后，完整路径太占列（一个深目录能吃掉 40 列），只留当前目录名。
+// home 本身仍显示为 ~，完整路径 pi 自己的 /status 等处仍可查。
 export function relativeCwd(cwd, home) {
-  if (!home) return cwd;
-  const rel = relative(resolve(home), resolve(cwd));
-  const inside = rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-  return !inside ? cwd : rel === '' ? '~' : `~${sep}${rel}`;
-}
-
-// 最后一次 assistant 响应的缓存命中率，与 pi 一致：只看最新一条，不做全会话平均。
-export function cacheHitRate(entries) {
-  const usage = entries.findLast((e) => e.type === 'message' && e.message?.role === 'assistant')?.message?.usage;
-  const prompt = (usage?.input ?? 0) + (usage?.cacheRead ?? 0) + (usage?.cacheWrite ?? 0);
-  return prompt > 0 ? (usage.cacheRead / prompt) * 100 : null;
+  const full = !home ? cwd : (() => {
+    const rel = relative(resolve(home), resolve(cwd));
+    const inside = rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+    return !inside ? cwd : rel === '' ? '~' : `~${sep}${rel}`;
+  })();
+  return full === '~' ? full : full.slice(full.lastIndexOf(sep) + 1) || full;
 }
 
 const sanitize = (text) => text.replace(/[\r\n\t]/g, ' ').replace(/ +/g, ' ').trim();
 const BAR_WIDTH = 10;
 const BAR_FILLED = '█';
 const BAR_EMPTY = '░';
+// 每段一个图标，和额度段的红绿灯同一套视觉；额度段自带灯，不再重复加。
+const ICON = { cwd: '📁', context: '🧠', cost: '💰' };
 
 export class MergedFooter {
   constructor(theme, footerData, getContext, readCredential) {
@@ -61,8 +61,7 @@ export class MergedFooter {
     const ctx = this.getContext();
     if (!ctx || width <= 0) return [];
     const dim = (text) => this.theme.fg('dim', text);
-    const entries = ctx.sessionManager.getEntries();
-    const usage = sessionUsage(entries);
+    const usage = sessionUsage(ctx.sessionManager.getEntries());
 
     let pwd = relativeCwd(ctx.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
     const branch = this.footerData.getGitBranch();
@@ -70,11 +69,6 @@ export class MergedFooter {
     const sessionName = ctx.sessionManager.getSessionName?.();
     if (sessionName) pwd = `${pwd} • ${sessionName}`;
 
-    const stats = [];
-    for (const [mark, key] of [['↑', 'input'], ['↓', 'output'], ['R', 'cacheRead'], ['W', 'cacheWrite']])
-      if (usage.tokens[key]) stats.push(`${mark}${formatTokens(usage.tokens[key])}`);
-    const hit = cacheHitRate(entries);
-    if (hit !== null && (usage.tokens.cacheRead || usage.tokens.cacheWrite)) stats.push(`CH${hit.toFixed(1)}%`);
     const subscription = isSubscription(ctx, this.readCredential);
     const cost = usage.cost.amount;
     // 费用未知时显示 $?，不拿 0 冒充已知的零花费。
@@ -86,14 +80,13 @@ export class MergedFooter {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([, text]) => sanitize(text))
       .filter(Boolean);
-    // 放不下就按优先级降级：先丢 token 明细，再丢上下文的绝对计数（进度条和百分比
-    // 已经说明了同一件事）。额度和其他扩展状态是这一行的主角，任何一级都不丢。
-    // 空 stats 不能交给 dim()：空串包上 SGR 后非空，会在行首留一个空格。
+    // 放不下就逐级降级：先丢上下文的绝对计数（进度条和百分比已经说明了同一件事），
+    // 再丢工作目录。额度和其他扩展状态是这一行的主角，任何一级都不丢。
     const separator = this.theme.fg('borderMuted', ' │ ');
     const compose = (level) => {
-      const groups = level < 1 && stats.length ? [dim(stats.join(' '))] : [];
-      groups.push(this.contextSegment(ctx, level < 2));
-      if (costText) groups.push(this.theme.fg('warning', costText));
+      const groups = level < 2 ? [`${ICON.cwd} ${dim(pwd)}`] : [];
+      groups.push(`${ICON.context} ${this.contextSegment(ctx, level < 1)}`);
+      if (costText) groups.push(`${ICON.cost} ${this.theme.fg('warning', costText)}`);
       if (statuses.length) groups.push(statuses.join(' '));
       return groups.join(separator);
     };
@@ -119,7 +112,7 @@ export class MergedFooter {
       rightWidth = visibleWidth(right);
     }
     const gap = width - leftWidth - rightWidth;
-    const line = gap > 0 ? `${left}${' '.repeat(gap)}${dim(right)}` : left;
-    return [truncateToWidth(dim(pwd), width, dim('…')), line];
+    // 单行：pi 内置 footer 的三行全部并进这一行。
+    return [gap > 0 ? `${left}${' '.repeat(gap)}${dim(right)}` : left];
   }
 }
