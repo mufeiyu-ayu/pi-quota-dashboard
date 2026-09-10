@@ -45,15 +45,15 @@ pi install ./pi-quota-dashboard
 pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, each segment carrying its own icon and separated by `│`:
 
 ```
-🤖 high · gpt-6-astra │ 📁 pi-dashboard (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h
-└──── model ────────┘   └──── directory ─────┘   └──────── context ─────────┘   └─ cost ─┘   └──── quota ────┘
+🤖 high · gpt-6-astra │ 🌿 main │ 📊 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h
+└──── model ────────┘   └branch┘   └──────── context ─────────┘   └─ cost ─┘   └──── quota ────┘
 ```
 
 Everything is left-aligned — nothing is pushed to the far right where it gets truncated first.
 
 - **Thinking level comes before the model name**, coloured with pi's own thinking scale (grey → blue → violet → magenta), so the strength reads at a glance.
 - **The provider is not shown.** `gpt-6-astra`, `deepseek-v4-flash` and `claude-fable-5-1` already say which vendor they are; the prefix cost 16 columns for nothing.
-- **Only the current directory name**, not the full path — a deep tree can eat 40 columns on its own.
+- **Only the git branch, no working directory.** The branch is the part that changes and is worth watching; you already know which project you are in. Outside a repository the segment disappears entirely.
 - **Cost uses the regular foreground colour.** Yellow is reserved for signals that mean something (quota running low, context near the limit); a decorative yellow would collide with them.
 
 ### Context
@@ -80,9 +80,9 @@ A narrow terminal must not push the quota — the whole point of the extension �
 
 | Width | Shows |
 |---|---|
-| Wide | `🤖 high · model │ 📁 dir (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
+| Wide | `🤖 high · model │ 🌿 main │ 📊 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
 | Narrower | absolute token count dropped — the bar and the percentage already say it |
-| Narrower still | directory dropped |
+| Narrower still | branch dropped |
 | Narrowest | the line is truncated from the right. Model, quota and other extension statuses are never dropped as segments |
 
 `setStatus()` is still published normally, so if another extension takes over the footer this one keeps showing up there. `session_shutdown` hands the built-in footer back.

@@ -1,4 +1,3 @@
-import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { visibleWidth, truncateToWidth } from '@earendil-works/pi-tui';
 import { sessionUsage } from './core.mjs';
 import { isSubscription } from './auth.mjs';
@@ -14,23 +13,12 @@ export const formatTokens = (count) =>
   : count < 10_000_000 ? `${(count / 1_000_000).toFixed(1)}M`
   : `${Math.round(count / 1_000_000)}M`;
 
-// 全部并进一行后，完整路径太占列（一个深目录能吃掉 40 列），只留当前目录名。
-// home 本身仍显示为 ~，完整路径 pi 自己的 /status 等处仍可查。
-export function relativeCwd(cwd, home) {
-  const full = !home ? cwd : (() => {
-    const rel = relative(resolve(home), resolve(cwd));
-    const inside = rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-    return !inside ? cwd : rel === '' ? '~' : `~${sep}${rel}`;
-  })();
-  return full === '~' ? full : full.slice(full.lastIndexOf(sep) + 1) || full;
-}
-
 const sanitize = (text) => text.replace(/[\r\n\t]/g, ' ').replace(/ +/g, ' ').trim();
 const BAR_WIDTH = 10;
 const BAR_FILLED = '█';
 const BAR_EMPTY = '░';
 // 每段一个图标，和额度段的红绿灯同一套视觉；额度段自带灯，不再重复加。
-const ICON = { model: '🤖', cwd: '📁', context: '🧠', cost: '💰' };
+const ICON = { model: '🤖', branch: '🌿', context: '📊', cost: '💰' };
 // 用 pi 自己的 thinking 分级色（灰→蓝→紫→品红），强度一眼可辨且与 pi 其余界面一致。
 // thinkingMax 在主题里是可选色，退回 Xhigh 以免主题没定义时取不到。
 const THINKING_COLOR = {
@@ -71,12 +59,9 @@ export class MergedFooter {
     const dim = (text) => this.theme.fg('dim', text);
     const usage = sessionUsage(ctx.sessionManager.getEntries());
 
-    let pwd = relativeCwd(ctx.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
+    // 工作目录里唯一会变、值得盯的是分支；目录名自己知道，不占列。
+    // 不在 git 仓库里就整段消失。
     const branch = this.footerData.getGitBranch();
-    if (branch) pwd = `${pwd} (${branch})`;
-    const sessionName = ctx.sessionManager.getSessionName?.();
-    if (sessionName) pwd = `${pwd} • ${sessionName}`;
-
     const subscription = isSubscription(ctx, this.readCredential);
     const cost = usage.cost.amount;
     // 费用未知时显示 $?，不拿 0 冒充已知的零花费。
@@ -89,11 +74,11 @@ export class MergedFooter {
       .map(([, text]) => sanitize(text))
       .filter(Boolean);
     // 放不下就逐级降级：先丢上下文的绝对计数（进度条和百分比已经说明了同一件事），
-    // 再丢工作目录。额度和其他扩展状态是这一行的主角，任何一级都不丢。
+    // 再丢分支。额度和其他扩展状态是这一行的主角，任何一级都不丢。
     const separator = this.theme.fg('borderMuted', ' │ ');
     const compose = (level) => {
       const groups = [`${ICON.model} ${this.modelSegment(ctx)}`];
-      if (level < 2) groups.push(`${ICON.cwd} ${dim(pwd)}`);
+      if (level < 2 && branch) groups.push(`${ICON.branch} ${dim(branch)}`);
       groups.push(`${ICON.context} ${this.contextSegment(ctx, level < 1)}`);
       // 费用用常规前景色：黄色留给有语义的信号（额度告急、上下文接近上限），
       // 一个纯装饰的黄会和它们撞色。
