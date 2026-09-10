@@ -17,8 +17,6 @@ const sanitize = (text) => text.replace(/[\r\n\t]/g, ' ').replace(/ +/g, ' ').tr
 const BAR_WIDTH = 10;
 const BAR_FILLED = '█';
 const BAR_EMPTY = '░';
-// 每段一个图标，和额度段的红绿灯同一套视觉；额度段自带灯，不再重复加。
-const ICON = { model: '🤖', branch: '🌿', context: '📊', cost: '💰' };
 // 用 pi 自己的 thinking 分级色（灰→蓝→紫→品红），强度一眼可辨且与 pi 其余界面一致。
 // thinkingMax 在主题里是可选色，退回 Xhigh 以免主题没定义时取不到。
 const THINKING_COLOR = {
@@ -75,15 +73,16 @@ export class MergedFooter {
       .filter(Boolean);
     // 放不下就逐级降级：先丢上下文的绝对计数（进度条和百分比已经说明了同一件事），
     // 再丢分支。额度和其他扩展状态是这一行的主角，任何一级都不丢。
+    // 段落靠 │ 分隔，不加图标。额度段自带的红绿灯是状态指示，不是装饰，保留。
     const separator = this.theme.fg('borderMuted', ' │ ');
     const compose = (level) => {
-      const groups = [`${ICON.model} ${this.modelSegment(ctx)}`];
-      if (level < 2 && branch) groups.push(`${ICON.branch} ${dim(branch)}`);
-      groups.push(`${ICON.context} ${this.contextSegment(ctx, level < 1)}`);
+      const groups = [this.modelSegment(ctx)];
+      if (level < 2 && branch) groups.push(dim(branch));
+      groups.push(this.contextSegment(ctx, level < 1));
       // 费用用常规前景色：黄色留给有语义的信号（额度告急、上下文接近上限），
       // 一个纯装饰的黄会和它们撞色。
-      if (costText) groups.push(`${ICON.cost} ${this.theme.fg('text', costText)}`);
-      if (statuses.length) groups.push(statuses.join(' '));
+      if (costText) groups.push(this.theme.fg('text', costText));
+      if (statuses.length) groups.push(statuses.join(separator));
       return groups.join(separator);
     };
 

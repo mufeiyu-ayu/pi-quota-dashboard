@@ -105,26 +105,26 @@ test('merged footer: 扩展状态与统计并进同一行、不溢出、随会�
     assert.equal(lines.length, 1); // pi 的三行全部并成一行
     const plain = (line) => line.replace(/\x1b\[[0-9;]*m/g, '');
     // 上下文、费用与扩展状态同行，模型仍右对齐。
-    // 模型、分支、上下文、费用、扩展状态全在这一行，每段一个图标。
-    assert.match(plain(lines[0]), /^🤖 high · FAKE_模型 │ 🌿 main │ 📊 █████░░░░░ 50\.0% 500\/1\.0k │ 💰 \$0\.013 │ FULL$/);
+    // 模型、分支、上下文、费用、扩展状态全在这一行，靠 │ 分隔。
+    assert.match(plain(lines[0]), /^high · FAKE_模型 │ main │ █████░░░░░ 50\.0% 500\/1\.0k │ \$0\.013 │ FULL$/);
     // 不显示厂商，模型段也不再右对齐。
     assert.doesNotMatch(plain(lines[0]), /FAKE_UNKNOWN/);
     // 会话尚无统计时行首不留空格。
     ctx.sessionManager.getEntries = () => [];
-    assert.match(plain(footer.render(160)[0]), /│ 📊 █████░░░░░ 50\.0% 500\/1\.0k │ FULL/);
+    assert.match(plain(footer.render(160)[0]), /│ █████░░░░░ 50\.0% 500\/1\.0k │ FULL/);
     ctx.sessionManager.getEntries = () => [message({ input: 1200, output: 34, cacheRead: 900, cacheWrite: 100, totalTokens: 2234, cost: { total: 0.0125 } })];
     // 宽度不够时先丢上下文的绝对计数；额度与其他扩展状态任何一级都不丢。
     const at = (w) => plain(footer.render(w)[0]);
-    assert.match(at(200), /🌿 main │ 📊 █████░░░░░ 50\.0% 500\/1\.0k │ /);
-    assert.doesNotMatch(at(75), /500\/1\.0k/);
-    assert.match(at(75), /🌿 main │ 📊 █████░░░░░ 50\.0% │ /);
-    assert.doesNotMatch(at(65), /🌿/);
-    assert.match(at(65), /^🤖 high · FAKE_模型 │ 📊 █████░░░░░ 50\.0% │ 💰 \$0\.013 │ FULL/);
+    assert.match(at(200), /│ main │ █████░░░░░ 50\.0% 500\/1\.0k │ /);
+    assert.doesNotMatch(at(60), /500\/1\.0k/);
+    assert.match(at(60), /│ main │ █████░░░░░ 50\.0% │ /);
+    assert.doesNotMatch(at(55), /main/);
+    assert.match(at(55), /^high · FAKE_模型 │ █████░░░░░ 50\.0% │ \$0\.013 │ FULL/);
     for (const width of [0, 1, 2, 3, 8, 20, 40, 80, 160])
       for (const line of footer.render(width)) assert.ok(visibleWidth(line) <= width, `width ${width}`);
     // 有响应但 cost=0 时不拿 0 冒充已知零花费。
     ctx.sessionManager.getEntries = () => [message({ input: 5, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 6, cost: { total: 0 } })];
-    assert.match(plain(footer.render(160)[0]), /💰 \$\?/);
+    assert.match(plain(footer.render(160)[0]), /│ \$\? │/);
   } finally {
     for (const handler of extension.handlers.get('session_shutdown')) await handler({ type: 'session_shutdown', reason: 'quit' }, ctx);
   }

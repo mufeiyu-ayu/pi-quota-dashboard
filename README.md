@@ -42,11 +42,11 @@ pi install ./pi-quota-dashboard
 
 ## The footer line
 
-pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, each segment carrying its own icon and separated by `│`:
+pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, segments separated by `│`:
 
 ```
-🤖 high · gpt-6-astra │ 🌿 main │ 📊 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h
-└──── model ────────┘   └branch┘   └──────── context ─────────┘   └─ cost ─┘   └──── quota ────┘
+high · gpt-6-astra │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ 🟡 7d 25% ↻4d11h
+└──── model ─────┘   └branch┘  └──────── context ─────────┘  └─ cost ─┘  └──── quota ────┘
 ```
 
 Everything is left-aligned — nothing is pushed to the far right where it gets truncated first.
@@ -80,7 +80,7 @@ A narrow terminal must not push the quota — the whole point of the extension �
 
 | Width | Shows |
 |---|---|
-| Wide | `🤖 high · model │ 🌿 main │ 📊 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
+| Wide | `high · model │ main │ ██░░░░░░░░ 18.5% 185k/1.0M │ $0.061 │ status` |
 | Narrower | absolute token count dropped — the bar and the percentage already say it |
 | Narrower still | branch dropped |
 | Narrowest | the line is truncated from the right. Model, quota and other extension statuses are never dropped as segments |
