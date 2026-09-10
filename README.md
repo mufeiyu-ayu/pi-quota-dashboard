@@ -8,11 +8,11 @@ Every other pi extension covers either subscription windows (Anthropic OAuth, Co
 
 ![The merged footer line](./docs/footer.png)
 
-That shot is on DeepSeek, whose balance is comfortably funded — so the quota segment withdraws itself instead of leaving a gap. On a subscription provider the same line ends with:
+That shot is a Codex Pro account: `7d 25% (4d9h)` is the single 7-day window it returns — no 5h, because Pro does not have one. The branch segment is absent because that session is not in a git repository. The quota segment on the other providers:
 
 ```
-7d 25% (4d11h)                        Codex Pro — one 7-day window is all the account has
 5h 98% (3h12m) · 7d 49% · Fable 13%   Claude — one entry per window
+(nothing)                             DeepSeek — a funded balance stays out of the way
 ```
 
 Verified against **pi 0.85.1 / Node 22.20.0**.
