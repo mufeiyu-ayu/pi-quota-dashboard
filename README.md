@@ -6,9 +6,13 @@ A read-only quota, balance and session dashboard for the [pi coding agent](https
 
 Every other pi extension covers either subscription windows (Anthropic OAuth, Codex) *or* API balance (DeepSeek). This one does both, because they are different billing concepts and a dashboard should not pretend otherwise.
 
+![The merged footer line](./docs/footer.png)
+
+That shot is on DeepSeek, whose balance is comfortably funded — so the quota segment withdraws itself instead of leaving a gap. On a subscription provider the same line ends with:
+
 ```
-~ (main)
-↑31k ↓518 R91k W2.0k CH73.4% │ █░░░░░░░░░ 10.4% 104k/1.0M │ $0.426 │ 🟡 7d 25% ↻4d11h    gpt-6-astra • high
+🟡 7d 25% ↻4d11h                            Codex Pro — one 7-day window is all the account has
+🟢 5h 98% ↻3h12m 🟡 7d 49% 🔴 Fable 13%     Claude — one light per window
 ```
 
 Verified against **pi 0.85.1 / Node 22.20.0**.
