@@ -106,8 +106,9 @@ test('merged footer: 扩展状态与统计并进同一行、不溢出、随会�
     const plain = (line) => line.replace(/\x1b\[[0-9;]*m/g, '');
     // 上下文、费用与扩展状态同行，模型仍右对齐。
     // 工作目录、上下文、费用、扩展状态、右对齐模型全在这一行，每段一个图标。
-    assert.match(plain(lines[0]), /^📁 pi-dashboard \(main\) │ 🧠 █████░░░░░ 50\.0% 500\/1\.0k │ 💰 \$0\.013 │ FULL/);
-    assert.match(plain(lines[0]), /\(FAKE_UNKNOWN\) FAKE_模型 • high$/);
+    assert.match(plain(lines[0]), /^🤖 high · FAKE_模型 │ 📁 pi-dashboard \(main\) │ 🧠 █████░░░░░ 50\.0% 500\/1\.0k │ 💰 \$0\.013 │ FULL$/);
+    // 不显示厂商，模型段也不再右对齐。
+    assert.doesNotMatch(plain(lines[0]), /FAKE_UNKNOWN/);
     // 会话尚无统计时行首不留空格。
     ctx.sessionManager.getEntries = () => [];
     assert.match(plain(footer.render(160)[0]), /│ 🧠 █████░░░░░ 50\.0% 500\/1\.0k │ FULL/);
@@ -115,10 +116,10 @@ test('merged footer: 扩展状态与统计并进同一行、不溢出、随会�
     // 宽度不够时先丢上下文的绝对计数；额度与其他扩展状态任何一级都不丢。
     const at = (w) => plain(footer.render(w)[0]);
     assert.match(at(200), /📁 .* │ 🧠 █████░░░░░ 50\.0% 500\/1\.0k │ /);
-    assert.doesNotMatch(at(85), /500\/1\.0k/);
-    assert.match(at(85), /📁 .* │ 🧠 █████░░░░░ 50\.0% │ /);
-    assert.doesNotMatch(at(60), /📁/);
-    assert.match(at(60), /^🧠 █████░░░░░ 50\.0% │ 💰 \$0\.013 │ FULL/);
+    assert.doesNotMatch(at(90), /500\/1\.0k/);
+    assert.match(at(90), /📁 .* │ 🧠 █████░░░░░ 50\.0% │ /);
+    assert.doesNotMatch(at(70), /📁/);
+    assert.match(at(70), /^🤖 high · FAKE_模型 │ 🧠 █████░░░░░ 50\.0% │ 💰 \$0\.013 │ FULL/);
     for (const width of [0, 1, 2, 3, 8, 20, 40, 80, 160])
       for (const line of footer.render(width)) assert.ok(visibleWidth(line) <= width, `width ${width}`);
     // 有响应但 cost=0 时不拿 0 冒充已知零花费。

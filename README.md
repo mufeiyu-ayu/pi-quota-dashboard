@@ -45,11 +45,16 @@ pi install ./pi-quota-dashboard
 pi's built-in footer is three rows: working directory, stats, extension statuses. This extension uses `ui.setFooter()` to collapse all three into **one**, each segment carrying its own icon and separated by `│`:
 
 ```
-📁 pi-dashboard (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h    model • high
-└──── directory ─────┘   └──────── context ─────────┘   └─ cost ─┘   └───── quota ────┘    └ right-aligned ┘
+🤖 high · gpt-6-astra │ 📁 pi-dashboard (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ 🟡 7d 25% ↻4d11h
+└──── model ────────┘   └──── directory ─────┘   └──────── context ─────────┘   └─ cost ─┘   └──── quota ────┘
 ```
 
-Only the current directory name is shown, not the full path — a deep tree can eat 40 columns on its own.
+Everything is left-aligned — nothing is pushed to the far right where it gets truncated first.
+
+- **Thinking level comes before the model name**, coloured with pi's own thinking scale (grey → blue → violet → magenta), so the strength reads at a glance.
+- **The provider is not shown.** `gpt-6-astra`, `deepseek-v4-flash` and `claude-fable-5-1` already say which vendor they are; the prefix cost 16 columns for nothing.
+- **Only the current directory name**, not the full path — a deep tree can eat 40 columns on its own.
+- **Cost uses the regular foreground colour.** Yellow is reserved for signals that mean something (quota running low, context near the limit); a decorative yellow would collide with them.
 
 ### Context
 
@@ -75,10 +80,10 @@ A narrow terminal must not push the quota — the whole point of the extension �
 
 | Width | Shows |
 |---|---|
-| Wide | `📁 dir (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
+| Wide | `🤖 high · model │ 📁 dir (main) │ 🧠 ██░░░░░░░░ 18.5% 185k/1.0M │ 💰 $0.061 │ status` |
 | Narrower | absolute token count dropped — the bar and the percentage already say it |
 | Narrower still | directory dropped |
-| Narrowest | only the right-hand model name is truncated. Quota and other extension statuses are never dropped |
+| Narrowest | the line is truncated from the right. Model, quota and other extension statuses are never dropped as segments |
 
 `setStatus()` is still published normally, so if another extension takes over the footer this one keeps showing up there. `session_shutdown` hands the built-in footer back.
 
@@ -89,11 +94,12 @@ These are extension-API boundaries, not preferences:
 | Item | Why |
 |---|---|
 | `(auto)` | **Not shown.** `autoCompactionEnabled` lives on pi's internal session object and is unreachable from `ExtensionContext`. Better absent than possibly stale |
+| provider prefix | **Not shown.** pi prints `(openai-codex)` when several providers are configured; the model id already identifies the vendor |
 | `(sub)` | Mirrors pi's `isUsingSubscription`, but the `snapshot.auth` map behind `isUsingOAuth` is unreachable, so it uses `readStoredCredential(id)?.type === 'oauth' && provider.auth.oauth.isSubscription`. OAuth from environment/runtime is missed — under-reporting beats guessing |
 | `↑↓RW` `CH` | **Not shown.** The per-direction token breakdown and cache-hit rate are covered by the cost and context segments; cumulative token counts remain in `/dashboard`. |
 | `$?` | pi prints the running total; this keeps the conservative reading — if a **billable** response reports a cost of 0, the figure is untrustworthy, so it says so. An all-zero empty response (an abort, a model switch) is self-consistent and does not poison the session |
 
-Everything else — context thresholds, right-aligned model, provider prefix, truncation rules — matches the built-in footer.
+Everything else — context thresholds, truncation behaviour — matches the built-in footer.
 
 ## Commands
 

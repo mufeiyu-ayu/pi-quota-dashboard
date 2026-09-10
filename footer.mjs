@@ -30,7 +30,13 @@ const BAR_WIDTH = 10;
 const BAR_FILLED = '█';
 const BAR_EMPTY = '░';
 // 每段一个图标，和额度段的红绿灯同一套视觉；额度段自带灯，不再重复加。
-const ICON = { cwd: '📁', context: '🧠', cost: '💰' };
+const ICON = { model: '🤖', cwd: '📁', context: '🧠', cost: '💰' };
+// 用 pi 自己的 thinking 分级色（灰→蓝→紫→品红），强度一眼可辨且与 pi 其余界面一致。
+// thinkingMax 在主题里是可选色，退回 Xhigh 以免主题没定义时取不到。
+const THINKING_COLOR = {
+  off: 'thinkingOff', minimal: 'thinkingMinimal', low: 'thinkingLow', medium: 'thinkingMedium',
+  high: 'thinkingHigh', xhigh: 'thinkingXhigh', max: 'thinkingMax',
+};
 
 export class MergedFooter {
   constructor(theme, footerData, getContext, readCredential) {
@@ -51,11 +57,13 @@ export class MergedFooter {
     const counts = `${tokens === null ? '?' : formatTokens(tokens)}/${formatTokens(windowTokens)}`;
     return `${bar} ${pct} ${this.theme.fg('dim', counts)}`;
   }
+  // 思考强度在前、模型名在后；不显示厂商，模型 id 本身已经说明是哪一家。
   modelSegment(ctx) {
-    const name = ctx.model?.id ?? 'no-model';
+    const name = this.theme.fg('dim', ctx.model?.id ?? 'no-model');
     if (!ctx.model?.reasoning) return name;
     const level = ctx.thinkingLevel || 'off';
-    return level === 'off' ? `${name} • thinking off` : `${name} • ${level}`;
+    const color = THINKING_COLOR[level] ?? 'thinkingXhigh';
+    return `${this.theme.fg(color, level)}${this.theme.fg('borderMuted', ' · ')}${name}`;
   }
   render(width) {
     const ctx = this.getContext();
@@ -84,35 +92,19 @@ export class MergedFooter {
     // 再丢工作目录。额度和其他扩展状态是这一行的主角，任何一级都不丢。
     const separator = this.theme.fg('borderMuted', ' │ ');
     const compose = (level) => {
-      const groups = level < 2 ? [`${ICON.cwd} ${dim(pwd)}`] : [];
+      const groups = [`${ICON.model} ${this.modelSegment(ctx)}`];
+      if (level < 2) groups.push(`${ICON.cwd} ${dim(pwd)}`);
       groups.push(`${ICON.context} ${this.contextSegment(ctx, level < 1)}`);
-      if (costText) groups.push(`${ICON.cost} ${this.theme.fg('warning', costText)}`);
+      // 费用用常规前景色：黄色留给有语义的信号（额度告急、上下文接近上限），
+      // 一个纯装饰的黄会和它们撞色。
+      if (costText) groups.push(`${ICON.cost} ${this.theme.fg('text', costText)}`);
       if (statuses.length) groups.push(statuses.join(' '));
       return groups.join(separator);
     };
 
-    const bare = this.modelSegment(ctx);
-    let left = compose(0);
-    for (let level = 1; level <= 2 && visibleWidth(left) + 2 + visibleWidth(bare) > width; level++)
-      left = compose(level);
-    let leftWidth = visibleWidth(left);
-    if (leftWidth > width) {
-      left = truncateToWidth(left, width, '…');
-      leftWidth = visibleWidth(left);
-    }
-
-    let right = bare;
-    if (this.footerData.getAvailableProviderCount() > 1 && ctx.model) {
-      const withProvider = `(${ctx.model.provider}) ${right}`;
-      if (leftWidth + 2 + visibleWidth(withProvider) <= width) right = withProvider;
-    }
-    let rightWidth = visibleWidth(right);
-    if (leftWidth + 2 + rightWidth > width) {
-      right = truncateToWidth(right, Math.max(0, width - leftWidth - 2), '');
-      rightWidth = visibleWidth(right);
-    }
-    const gap = width - leftWidth - rightWidth;
-    // 单行：pi 内置 footer 的三行全部并进这一行。
-    return [gap > 0 ? `${left}${' '.repeat(gap)}${dim(right)}` : left];
+    // 单行、左对齐：pi 内置 footer 的三行全部并进这一行，模型不再右对齐。
+    let line = compose(0);
+    for (let level = 1; level <= 2 && visibleWidth(line) > width; level++) line = compose(level);
+    return [truncateToWidth(line, width, dim('…'))];
   }
 }
